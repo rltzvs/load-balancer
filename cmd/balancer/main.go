@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"load-balancer/internal/config"
 	httpcontroller "load-balancer/internal/controller/http"
@@ -15,6 +18,8 @@ import (
 )
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
@@ -29,10 +34,10 @@ func main() {
 	}
 
 	limiter := ratelimiter.New(applog, uint32(cfg.RateLimits.DefaultCapacity), uint32(cfg.RateLimits.DefaultRate))
-	go limiter.RefillAll(context.Background())
+	go limiter.RefillAll(ctx)
 
 	healthChecker := healthchecker.New(balancer.Upstreams, cfg.Balancer.HealthCheckInterval, applog)
-	go healthChecker.Start(context.Background())
+	go healthChecker.Start(ctx)
 
 	handler := httpcontroller.New(balancer, applog)
 
@@ -42,8 +47,23 @@ func main() {
 		Addr:    ":" + cfg.Server.Port,
 		Handler: limiter.Middleware(handler),
 	}
-	applog.Info("server started", "addr", server.Addr)
-	if err := server.ListenAndServe(); err != nil {
-		applog.Error("server listen error", "error", err)
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			applog.Error("failed to start server", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+	applog.Info("shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		applog.Error("failed to shutdown server", "error", err)
+	} else {
+		applog.Info("server shutdown gracefully")
 	}
 }
