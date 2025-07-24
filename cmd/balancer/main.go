@@ -11,6 +11,7 @@ import (
 	"load-balancer/internal/healthchecker"
 	"load-balancer/internal/loadbalancer"
 	"load-balancer/internal/logger"
+	"load-balancer/internal/ratelimiter"
 )
 
 func main() {
@@ -27,6 +28,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	limiter := ratelimiter.New(applog, uint32(cfg.RateLimits.DefaultCapacity), uint32(cfg.RateLimits.DefaultRate))
+	go limiter.RefillAll(context.Background())
+
 	healthChecker := healthchecker.New(balancer.Upstreams, cfg.Balancer.HealthCheckInterval, applog)
 	go healthChecker.Start(context.Background())
 
@@ -36,7 +40,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Server.Port,
-		Handler: handler,
+		Handler: limiter.Middleware(handler),
 	}
 	applog.Info("server started", "addr", server.Addr)
 	if err := server.ListenAndServe(); err != nil {
