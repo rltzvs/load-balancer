@@ -8,6 +8,11 @@ import (
 	"sync/atomic"
 )
 
+var (
+	ErrNoUpstreams      = errors.New("no upstreams available")
+	ErrNoAliveUpstreams = errors.New("no alive upstreams available")
+)
+
 type Balancer struct {
 	Upstreams []*Upstream
 	nextIndex atomic.Uint32
@@ -16,6 +21,10 @@ type Balancer struct {
 
 func New(upstreams []string, logger logger.Logger) (*Balancer, error) {
 	var Upstreams []*Upstream
+
+	if len(upstreams) == 0 {
+		return nil, ErrNoUpstreams
+	}
 
 	for _, upstream := range upstreams {
 		origin, err := url.Parse(upstream)
@@ -38,7 +47,7 @@ func New(upstreams []string, logger logger.Logger) (*Balancer, error) {
 func (b *Balancer) Next() (*Upstream, error) {
 	total := len(b.Upstreams)
 	if total == 0 {
-		return nil, errors.New("no upstreams")
+		return nil, ErrNoUpstreams
 	}
 
 	for i := 0; i < total; i++ {
@@ -51,5 +60,5 @@ func (b *Balancer) Next() (*Upstream, error) {
 		}
 	}
 
-	return nil, errors.New("no alive upstreams")
+	return nil, ErrNoAliveUpstreams
 }

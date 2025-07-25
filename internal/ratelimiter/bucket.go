@@ -1,7 +1,6 @@
 package ratelimiter
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -27,7 +26,7 @@ func NewBucket(initialTokens, capacity, refillRate uint32) *Bucket {
 func (b *Bucket) TryTake() bool {
 	for {
 		current := b.tokens.Load()
-		fmt.Println(current)
+
 		if current > 0 {
 			if b.tokens.CompareAndSwap(current, current-1) {
 				return true

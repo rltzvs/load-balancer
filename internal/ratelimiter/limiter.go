@@ -32,7 +32,7 @@ func (r *Limiter) Middleware(next http.Handler) http.Handler {
 		if clientID == "" {
 			clientID = extractIP(req)
 		}
-		// r.logger.Info("request", "client", clientID)
+
 		if !r.Allow(clientID) {
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			return
@@ -42,10 +42,6 @@ func (r *Limiter) Middleware(next http.Handler) http.Handler {
 }
 
 func (l *Limiter) GetBucket(clientID string) *Bucket {
-	return nil
-}
-
-func (l *Limiter) Allow(clientID string) bool {
 	l.mu.RLock()
 	bucket, ok := l.buckets[clientID]
 	l.mu.RUnlock()
@@ -56,6 +52,11 @@ func (l *Limiter) Allow(clientID string) bool {
 		l.buckets[clientID] = bucket
 		l.mu.Unlock()
 	}
+	return bucket
+}
+
+func (l *Limiter) Allow(clientID string) bool {
+	bucket := l.GetBucket(clientID)
 
 	bucket.RefillIfNeeded(time.Now())
 

@@ -5,6 +5,7 @@ import (
 	"load-balancer/internal/loadbalancer"
 	"load-balancer/internal/logger"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -27,22 +28,31 @@ func New(upstreams []*loadbalancer.Upstream, interval time.Duration, logger logg
 }
 
 func (hc *HealthChecker) Start(ctx context.Context) {
+	hc.Logger.Info("starting health checker")
 	ticker := time.NewTicker(hc.Interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
+			var wg sync.WaitGroup
 			for _, upstream := range hc.Upstreams {
-				hc.checkUpstream(upstream)
+				wg.Add(1)
+				go func(u *loadbalancer.Upstream) {
+					defer wg.Done()
+					hc.checkUpstream(u)
+				}(upstream)
 			}
+			wg.Wait()
 		case <-ctx.Done():
+			hc.Logger.Info("stopping health checker")
 			return
 		}
 	}
 }
 
 func (hc *HealthChecker) checkUpstream(upstream *loadbalancer.Upstream) {
+	hc.Logger.Debug("checking upstream", "url", upstream.URL.String())
 	resp, err := hc.Client.Get(upstream.URL.String())
 	prevAlive := upstream.IsAlive()
 

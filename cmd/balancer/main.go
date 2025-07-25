@@ -11,6 +11,7 @@ import (
 
 	"load-balancer/internal/config"
 	httpcontroller "load-balancer/internal/controller/http"
+	"load-balancer/internal/controller/http/middleware"
 	"load-balancer/internal/healthchecker"
 	"load-balancer/internal/loadbalancer"
 	"load-balancer/internal/logger"
@@ -45,7 +46,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Server.Port,
-		Handler: limiter.Middleware(handler),
+		Handler: limiter.Middleware(middleware.LoggingMiddleware(applog)(handler)),
 	}
 
 	go func() {
