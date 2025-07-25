@@ -1,9 +1,10 @@
 package http
 
 import (
+	"net/http"
+
 	"load-balancer/internal/loadbalancer"
 	"load-balancer/internal/logger"
-	"net/http"
 )
 
 type Handler struct {

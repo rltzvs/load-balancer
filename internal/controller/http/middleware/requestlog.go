@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"load-balancer/internal/logger"
 	"net/http"
 	"time"
+
+	"load-balancer/internal/logger"
 )
 
 type responseWriterInterceptor struct {

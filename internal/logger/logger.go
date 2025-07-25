@@ -1,10 +1,8 @@
 package logger
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -25,21 +23,13 @@ func New(logLevel string) Logger {
 	slogLevel := parseLogLevel(logLevel)
 
 	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level:     slogLevel,
-		AddSource: true,
+		Level: slogLevel,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			switch a.Key {
 			case slog.TimeKey:
 				a.Value = slog.StringValue(time.Now().Format("2006-01-02 15:04:05"))
 			case slog.LevelKey:
 				a.Value = slog.StringValue(a.Value.String())
-			case slog.SourceKey:
-				if src, ok := a.Value.Any().(slog.Source); ok {
-					return slog.Attr{
-						Key:   slog.SourceKey,
-						Value: slog.StringValue(fmt.Sprintf("%s:%d", filepath.Base(src.File), src.Line)),
-					}
-				}
 			}
 			return a
 		},

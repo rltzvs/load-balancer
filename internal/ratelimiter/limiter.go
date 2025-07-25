@@ -2,11 +2,13 @@ package ratelimiter
 
 import (
 	"context"
-	"load-balancer/internal/logger"
 	"net"
 	"net/http"
 	"sync"
 	"time"
+
+	"load-balancer/internal/controller/http/util"
+	"load-balancer/internal/logger"
 )
 
 type Limiter struct {
@@ -34,7 +36,7 @@ func (r *Limiter) Middleware(next http.Handler) http.Handler {
 		}
 
 		if !r.Allow(clientID) {
-			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+			util.RespondError(w, 429, "Rate limit exceeded")
 			return
 		}
 		next.ServeHTTP(w, req)
@@ -48,7 +50,7 @@ func (l *Limiter) GetBucket(clientID string) *Bucket {
 
 	if !ok {
 		l.mu.Lock()
-		bucket = NewBucket(50, l.defaultCap, l.defaultRate)
+		bucket = NewBucket(l.defaultCap, l.defaultCap, l.defaultRate)
 		l.buckets[clientID] = bucket
 		l.mu.Unlock()
 	}
@@ -83,7 +85,6 @@ func (l *Limiter) RefillAll(ctx context.Context) {
 		}
 	}
 }
-
 func extractIP(r *http.Request) string {
 	ip := r.Header.Get("X-Real-IP")
 	if ip == "" {

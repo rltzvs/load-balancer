@@ -2,10 +2,13 @@ package loadbalancer
 
 import (
 	"errors"
-	"load-balancer/internal/logger"
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"sync/atomic"
+
+	"load-balancer/internal/controller/http/util"
+	"load-balancer/internal/logger"
 )
 
 var (
@@ -34,7 +37,16 @@ func New(upstreams []string, logger logger.Logger) (*Balancer, error) {
 		}
 		proxy := httputil.NewSingleHostReverseProxy(origin)
 
-		Upstreams = append(Upstreams, NewUpstream(origin, proxy))
+		newUpstream := NewUpstream(origin, proxy)
+
+		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			newUpstream.SetAlive(false)
+			logger.Error("proxy error", "backend", newUpstream.URL.String(), "error", err)
+
+			util.RespondError(w, http.StatusBadGateway, "Backend is unavailable. Please try again later.")
+		}
+
+		Upstreams = append(Upstreams, newUpstream)
 	}
 
 	return &Balancer{

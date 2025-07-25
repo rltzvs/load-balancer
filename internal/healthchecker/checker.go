@@ -2,11 +2,12 @@ package healthchecker
 
 import (
 	"context"
-	"load-balancer/internal/loadbalancer"
-	"load-balancer/internal/logger"
 	"net/http"
 	"sync"
 	"time"
+
+	"load-balancer/internal/loadbalancer"
+	"load-balancer/internal/logger"
 )
 
 type HealthChecker struct {
