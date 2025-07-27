@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"load-balancer/internal/config"
 	httpcontroller "load-balancer/internal/controller/http"
@@ -59,7 +58,7 @@ func main() {
 	<-ctx.Done()
 	applog.Info("shutdown signal received")
 
-	shutdownCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.Server.ShutdownTimeout)*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(ctx, cfg.Server.ShutdownTimeout)
 	defer cancel()
 
 	if err := server.Shutdown(shutdownCtx); err != nil {

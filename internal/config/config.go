@@ -12,10 +12,9 @@ import (
 
 type Config struct {
 	Server     ServerConfig
-	Database   DatabaseConfig
 	Logging    LoggingConfig
 	Balancer   BalancerConfig
-	RateLimits RateLimitDefaults
+	RateLimits RateLimitConfig
 }
 
 type ServerConfig struct {
@@ -30,21 +29,11 @@ type LoggingConfig struct {
 type BalancerConfig struct {
 	Upstreams           []string
 	HealthCheckInterval time.Duration
-	Algorithm           string // round-robin, random, etc.
 }
 
-type RateLimitDefaults struct {
+type RateLimitConfig struct {
 	DefaultCapacity int
 	DefaultRate     int
-}
-
-type DatabaseConfig struct {
-	Host     string
-	Port     string
-	Database string
-	Username string
-	Password string
-	SSLMode  string
 }
 
 func Load() (*Config, error) {
@@ -63,19 +52,10 @@ func Load() (*Config, error) {
 		Balancer: BalancerConfig{
 			Upstreams:           parseUpstreams(getEnv("UPSTREAMS", "")),
 			HealthCheckInterval: getDurationEnv("HEALTH_CHECK_INTERVAL", 5*time.Second),
-			Algorithm:           getEnv("BALANCER_ALGORITHM", "round-robin"),
 		},
-		RateLimits: RateLimitDefaults{
+		RateLimits: RateLimitConfig{
 			DefaultCapacity: getIntEnv("RATE_LIMIT_DEFAULT_CAPACITY", 100),
 			DefaultRate:     getIntEnv("RATE_LIMIT_DEFAULT_RATE", 10),
-		},
-		Database: DatabaseConfig{
-			Host:     getEnv("POSTGRES_HOST", "localhost"),
-			Port:     getEnv("POSTGRES_PORT", "5432"),
-			Database: getEnv("POSTGRES_DB", "balance_db"),
-			Username: getEnv("POSTGRES_USER", "balancer"),
-			Password: getEnv("POSTGRES_PASSWORD", "password"),
-			SSLMode:  getEnv("POSTGRES_SSL_MODE", "disable"),
 		},
 	}
 
@@ -90,22 +70,7 @@ func (c *Config) validate() error {
 	if len(c.Balancer.Upstreams) == 0 {
 		return fmt.Errorf("UPSTREAMS must be provided (comma-separated URLs)")
 	}
-	if c.Database.Host == "" || c.Database.Username == "" || c.Database.Password == "" {
-		return fmt.Errorf("incomplete PostgreSQL configuration")
-	}
 	return nil
-}
-
-func (c *DatabaseConfig) DSN() string {
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
-		c.Username,
-		c.Password,
-		c.Host,
-		c.Port,
-		c.Database,
-		c.SSLMode,
-	)
 }
 
 func getEnv(key string, defaultValue string) string {

@@ -1,0 +1,45 @@
+services:
+  balancer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TARGET: balancer
+    ports:
+      - "8080:8080"
+
+  testserver1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TARGET: test-server
+    environment:
+      - PORT=9001
+
+  testserver2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TARGET: test-server
+    environment:
+      - PORT=9002
+
+  testserver3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TARGET: test-server
+    environment:
+      - PORT=9003
+
+  testserver4:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TARGET: test-server
+    environment:
+      - PORT=9004
